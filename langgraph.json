@@ -1,0 +1,10 @@
+{
+  "node_version": "20",
+  "dockerfile_lines": [],
+  "dependencies": ["."],
+  "graphs": {
+    "builder": "./src/builderGraph.ts:graph",
+    "template": "./src/templateGraph.ts:graph"
+  },
+  "env": ".env"
+}
