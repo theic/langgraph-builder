@@ -3,8 +3,8 @@
   "dockerfile_lines": [],
   "dependencies": ["."],
   "graphs": {
-    "builder": "./src/builderGraph.ts:graph",
-    "template": "./src/templateGraph.ts:graph"
+    "builder": "./src/graph-builder.ts:graphBuilder",
+    "template": "./src/graph-template.ts:graphTemplate"
   },
   "env": ".env"
 }

@@ -1,21 +1,21 @@
-// Define the configurable parameters for the agent
-
 import { Annotation, LangGraphRunnableConfig } from "@langchain/langgraph";
-import { SYSTEM_PROMPT } from "./prompts.js";
+import { SYSTEM_PROMPT_BUILDER } from 'prompts.js';
 
-export const ConfigurationAnnotation = Annotation.Root({
+export const ConfigurationAnnotationBuilder = Annotation.Root({
   userId: Annotation<string>(),
   model: Annotation<string>(),
   systemPrompt: Annotation<string>(),
+  assistantId: Annotation<string>(),
 });
 
-export type Configuration = typeof ConfigurationAnnotation.State;
+export type Configuration = typeof ConfigurationAnnotationBuilder.State;
 
 export function ensureConfiguration(config?: LangGraphRunnableConfig) {
   const configurable = config?.configurable || {};
   return {
     userId: configurable?.userId || "default",
     model: configurable?.model || "anthropic/claude-3-5-sonnet-20240620",
-    systemPrompt: configurable?.systemPrompt || SYSTEM_PROMPT,
+    systemPrompt: configurable?.systemPrompt || SYSTEM_PROMPT_BUILDER,
+    assistantId: configurable?.assistantId || "default",
   };
 }
