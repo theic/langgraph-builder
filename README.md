@@ -1,32 +1,58 @@
-# Intro
+# LangGraph Builder
 
-This directory contains a simple LangGraph Graph, built for the introduction video in the LangGraph.js video series.
-This directory contains a single graph, located inside the `index.ts` file.
+A TypeScript framework for building personalized AI assistants using LangGraph, offering an alternative to OpenAI's GPTs. This project enables developers to create custom AI assistants with fine-grained control over conversation flow, memory management, and tool integration.
 
-## [YouTube Video](https://www.youtube.com/watch?v=Qu8BYTnh3K0)
+## Features
+
+- Create custom AI assistants with persistent personalities and instructions
+- Configure multiple LLM providers (OpenAI, Anthropic)
+- Built-in memory management for maintaining context
+- Extensible tool system for custom capabilities
+- Two implementation patterns:
+  - Template: Quick assistant creation with predefined flows
+  - Builder: Advanced customization with full control over conversation logic
+
+## Use Cases
+
+- Build domain-specific AI assistants
+- Create assistants with custom personality and knowledge
+- Implement complex conversation flows with memory and tool usage
+- Deploy assistants that maintain consistent behavior across conversations
 
 ## Setup
 
-To setup the intro project, install the dependencies:
-
+1. Install dependencies:
 ```bash
-yarn install
+npm install
 ```
 
-## Environment variables
-
-The intro project requires Tavily and OpenAI API keys to run. Sign up here:
-
-- OpenAI: https://platform.openai.com/signup
-- Tavily: https://tavily.com/
-
-Once you have your API keys, create a `.env` file in this directory and add the following:
-
+2. Configure environment variables in `.env`:
 ```bash
-TAVILY_API_KEY=YOUR_API_KEY
-OPENAI_API_KEY=YOUR_API_KEY
+OPENAI_API_KEY=your_key_here
+# or
+ANTHROPIC_API_KEY=your_key_here
 ```
 
-## LangGraph Config
+3. Build and start:
+```bash
+npm run build
+npm start
+```
 
-The LangGraph configuration file for the intro project is located inside [`langgraph.json`](langgraph.json). This file defines the single graph implemented in the project: `simple_agent`.
+## Development
+
+- `npm run lint` - Run linting
+- `npm run format` - Format code
+- `npm run build` - Build the project
+
+## Architecture
+
+The project uses LangGraph to orchestrate conversation flows and manage state. Key components include:
+- State management for maintaining conversation context
+- Tool integration for extended capabilities
+- Configuration system for customizing assistant behavior
+- Memory persistence for maintaining long-term context
+
+## License
+
+MIT License - See LICENSE file for details

@@ -1,6 +1,6 @@
 {
-  "name": "langgraph-search",
-  "description": "LangGraph.js example",
+  "name": "langgraph-builder",
+  "description": "Alternative to OpenAI's GPT Builder",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
