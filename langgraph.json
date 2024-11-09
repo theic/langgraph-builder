@@ -4,7 +4,8 @@
   "dependencies": ["."],
   "graphs": {
     "builder": "./src/graph-builder.ts:graphBuilder",
-    "template": "./src/graph-template.ts:graphTemplate"
+    "template": "./src/graph-template.ts:graphTemplate",
+    "title": "./src/graph-title.ts:graphTitle"
   },
   "env": ".env"
 }
