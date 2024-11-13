@@ -1,18 +1,17 @@
-// Main graph
 import {
   LangGraphRunnableConfig,
   START,
   StateGraph,
   END,
 } from "@langchain/langgraph";
-import { BaseMessage, AIMessage } from "@langchain/core/messages";
+import { BaseMessage, } from "@langchain/core/messages";
 import { initChatModel } from "langchain/chat_models/universal";
 import {
   ConfigurationAnnotationTemplate,
   ensureConfiguration,
-} from "./configuration-template.js";
-import { GraphAnnotation } from "./state.js";
-import { getStoreFromConfigOrThrow, splitModelAndProvider } from "./utils.js";
+} from "./configuration.js";
+import { GraphAnnotation } from "../../state.js";
+import { getStoreFromConfigOrThrow, splitModelAndProvider } from "../../utils.js";
 
 const llm = await initChatModel();
 
@@ -24,7 +23,7 @@ async function callModel(
   const configurable = ensureConfiguration(config);
   const item = await store.get(["system_messages", configurable.userId], configurable.assistantId);
 
-  const sys = item ? item.value.systemMessage : configurable.systemPrompt;
+  const sys = item ? item.value.system_message : configurable.systemPrompt;
 
   const result = await llm.invoke(
     [{ role: "system", content: sys }, ...state.messages],
