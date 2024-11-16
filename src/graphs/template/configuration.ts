@@ -14,7 +14,7 @@ export function ensureConfiguration(config?: LangGraphRunnableConfig) {
   const configurable = config?.configurable || {};
   return {
     userId: configurable?.userId || "default",
-    model: configurable?.model || "gpt-4o",
+    model: configurable?.model || "openai/gpt-4o",
     systemPrompt: configurable?.systemPrompt || SYSTEM_PROMPT_TEMPLATE,
     assistantId: configurable?.assistantId || "default",
   };

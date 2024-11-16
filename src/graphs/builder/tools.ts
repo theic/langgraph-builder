@@ -3,8 +3,16 @@ import { ensureConfiguration } from "./configuration.js";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { getStoreFromConfigOrThrow } from "../../utils.js";
+import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 
 export function initializeTools(config?: LangGraphRunnableConfig) {
+  // Initialize Tavily search tool
+  const searchTool = new TavilySearchResults({
+    apiKey: process.env.TAVILY_API_KEY,
+  });
+
+  searchTool.name = "web_search";
+
   /**
    * Upsert a system message (instruction) in the database.
    * @param system_message The system message content.
@@ -52,5 +60,5 @@ export function initializeTools(config?: LangGraphRunnableConfig) {
     }),
   });
 
-  return [upsertSystemTool];
+  return [upsertSystemTool, searchTool];
 }

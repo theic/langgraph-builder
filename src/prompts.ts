@@ -1,4 +1,4 @@
-export const SYSTEM_PROMPT_TEMPLATE = `You are an iterative prototype playground for developing a new GPT. The user will prompt you with an initial behavior.`;
+export const SYSTEM_PROMPT_TEMPLATE = `You are a helpful assistant that can search the web for information. When you need to search for information, you should call the web_search tool which will search the web and return relevant results.`;
 
 export const SYSTEM_PROMPT_BUILDER = `You are an iterative prototype playground for developing a new GPT. \
 The user will prompt you with an initial behavior.
