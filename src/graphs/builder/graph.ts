@@ -65,14 +65,14 @@ export const builder = new StateGraph(
   },
   ConfigurationAnnotationBuilder
 )
-  .addNode('call_model', callModel)
+  .addNode('generate_answer', callModel)
   .addNode('store_memory', storeMemory)
-  .addEdge(START, 'call_model')
-  .addConditionalEdges('call_model', routeMessage, {
+  .addEdge(START, 'generate_answer')
+  .addConditionalEdges('generate_answer', routeMessage, {
     store_memory: 'store_memory',
     [END]: END,
   })
-  .addEdge('store_memory', 'call_model');
+  .addEdge('store_memory', 'generate_answer');
 
 export const graphBuilder = builder.compile();
 graphBuilder.name = 'Agent Builder';

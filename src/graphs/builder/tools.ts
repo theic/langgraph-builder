@@ -4,61 +4,86 @@ import { z } from 'zod';
 import { getStoreFromConfigOrThrow } from '../../utils.js';
 import { ensureConfiguration } from './configuration.js';
 
+interface AssistantInstructions {
+  mainInstruction: string;
+  inlineOptionsInstruction: string;
+  mainOptionsInstruction: string;
+  assistantName: string;
+}
+
+interface AssistantInstructionsHistory extends AssistantInstructions {
+  success: boolean;
+  old: AssistantInstructions;
+}
+
 export function initializeTools(config?: LangGraphRunnableConfig) {
-  /**
-   * Upsert a system message (instruction) in the database.
-   * @param system_message The system message content.
-   * @param name The name of the AI Assistant.
-   * @returns A string confirming the instruction storage.
-   */
-  async function upsertSystem(opts: { system_message?: string; name?: string }): Promise<{
-    success: boolean;
-    system_message: string;
-    name: string;
-    name_old: string;
-    system_message_old: string;
-  }> {
-    const { system_message, name } = opts;
+  async function upsertSystem(
+    opts: Partial<AssistantInstructions>
+  ): Promise<AssistantInstructionsHistory> {
+    const { mainInstruction, inlineOptionsInstruction, mainOptionsInstruction, assistantName } =
+      opts;
     if (!config || !config.store) {
       throw new Error('Config or store not provided');
     }
 
     const configurable = ensureConfiguration(config);
     const store = getStoreFromConfigOrThrow(config);
-
     const { userId, assistantId } = configurable;
 
-    const item = await store.get(['system_messages', userId], assistantId);
+    const item = await store.get(['system', userId], assistantId);
 
-    await store.put(['system_messages', userId], assistantId, {
-      system_message: system_message || item?.value.system_message,
-      name: name || item?.value.name,
-    });
+    const updatedValues = {
+      mainInstruction: mainInstruction || item?.value.mainInstruction,
+      inlineOptionsInstruction: inlineOptionsInstruction || item?.value.inlineOptionsInstruction,
+      mainOptionsInstruction: mainOptionsInstruction || item?.value.mainOptionsInstruction,
+      assistantName: assistantName || item?.value.assistantName,
+    };
+
+    await store.put(['system', userId], assistantId, updatedValues);
 
     return {
       success: true,
-      name: name || item?.value.name,
-      system_message: system_message || item?.value.system_message,
-      name_old: item?.value.name || '',
-      system_message_old: item?.value.system_message || '',
+      // Current values
+      ...updatedValues,
+      // Previous values nested under 'old'
+      old: {
+        mainInstruction: item?.value.mainInstruction || '',
+        inlineOptionsInstruction: item?.value.inlineOptionsInstruction || '',
+        mainOptionsInstruction: item?.value.mainOptionsInstruction || '',
+        assistantName: item?.value.assistantName || '',
+      },
     };
   }
 
   const upsertSystemTool = tool(upsertSystem, {
     name: 'upsert_system',
     description:
-      'Upsert a system message (instruction) in the database for a specific user and assistant. \
-      The system message will be stored using the assistantId as the key, ensuring one \
-      system message per assistant.',
+      'Upsert assistant instructions in the database for a specific user and assistant. \
+      The instructions will be stored using the assistantId as the key, ensuring one \
+      set of instructions per assistant.',
     schema: z.object({
-      system_message: z
+      mainInstruction: z
         .string()
         .describe(
-          "The system message content. For example: \
+          "The main instruction for the assistant's behavior. For example: \
           'You are a helpful AI assistant focused on programming tasks.'"
         )
         .optional(),
-      name: z.string().describe('The name of the AI Assistant.').optional(),
+      inlineOptionsInstruction: z
+        .string()
+        .describe(
+          "Instructions for generating inline action buttons. For example: \
+          'You only generate Yes and No options.'"
+        )
+        .optional(),
+      mainOptionsInstruction: z
+        .string()
+        .describe(
+          "Instructions for generating main action buttons. For example: \
+          'Menu options: New Game, Load Game, Settings, Quit Game.'"
+        )
+        .optional(),
+      assistantName: z.string().describe('The name of the AI Assistant.').optional(),
     }),
   });
 

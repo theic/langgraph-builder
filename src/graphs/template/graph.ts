@@ -1,10 +1,11 @@
-import { AIMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
+import { AIMessage, BaseMessage } from '@langchain/core/messages';
 import { END, LangGraphRunnableConfig, START, StateGraph } from '@langchain/langgraph';
 import { initChatModel } from 'langchain/chat_models/universal';
 import { GraphAnnotation } from '../../state.js';
 import { getStoreFromConfigOrThrow, splitModelAndProvider } from '../../utils.js';
 import { ConfigurationAnnotationTemplate, ensureConfiguration } from './configuration.js';
-import { initializeTools } from './tools.js';
+import { getInlineActionTool } from './inline-action-tool.js';
+import { getWebSearchTool } from './web-search-tool.js';
 
 const llm = await initChatModel();
 
@@ -14,18 +15,34 @@ async function callModel(
 ): Promise<{ messages: BaseMessage[] }> {
   const store = getStoreFromConfigOrThrow(config);
   const configurable = ensureConfiguration(config);
-  const item = await store.get(['system_messages', configurable.userId], configurable.assistantId);
+  const item = await store.get(['system', configurable.userId], configurable.assistantId);
+  const lastMessage = state.messages[state.messages.length - 1];
 
-  const sys = item ? item.value.system_message : configurable.systemPrompt;
-
-  const tools = initializeTools(config);
+  const tools = [getWebSearchTool(config)];
   const boundLLM = llm.bind({
     tools: tools,
     tool_choice: 'auto',
   });
 
+  console.debug('Context message:', configurable.inlineOptionContext);
+
+  const optionRequest = configurable.inlineOptionContext
+    ? [
+        {
+          role: 'user',
+          content: `Context: ${configurable.inlineOptionContext} Action: ${lastMessage.content}`,
+        },
+      ]
+    : [];
+
+  console.debug('mainInstruction', item?.value.mainInstruction || configurable.mainInstruction);
+
   const result = await boundLLM.invoke(
-    [{ role: 'system', content: sys || configurable.systemPrompt }, ...state.messages],
+    [
+      { role: 'system', content: item?.value.mainInstruction || configurable.mainInstruction },
+      ...state.messages,
+      ...optionRequest,
+    ],
     {
       configurable: splitModelAndProvider(configurable.model),
     }
@@ -41,35 +58,83 @@ async function handleTools(
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
 
-  const tools = initializeTools(config);
-  const webSearchTool = tools[0];
-
-  if (!lastMessage.tool_calls?.length) {
+  if (!toolCalls.length) {
     return { messages: [] };
   }
 
+  const tools = [getWebSearchTool(config)];
+
   const toolMessages = await Promise.all(
     toolCalls.map(async (toolCall) => {
-      const result = await webSearchTool.invoke(toolCall.args);
-      return new ToolMessage({
-        content: result,
-        name: 'web_search',
-        tool_call_id: toolCall.id || '',
-      });
+      const tool = tools.find((t) => t.name === toolCall.name);
+      if (!tool) {
+        throw new Error(`Tool ${toolCall.name} not found`);
+      }
+      const result = await tool.invoke(toolCall);
+      return result;
     })
   );
 
   return { messages: toolMessages };
 }
 
-const shouldContinue = (state: typeof GraphAnnotation.State): 'web_search' | typeof END => {
+async function handleInlineAction(
+  state: typeof GraphAnnotation.State,
+  config: LangGraphRunnableConfig
+): Promise<{ messages: BaseMessage[] }> {
+  const configurable = ensureConfiguration(config);
+
+  const tools = [getInlineActionTool(config)];
+  const boundLLM = llm.bind({
+    tools: tools,
+    tool_choice: 'inline_action',
+  });
+
+  const result = await boundLLM.invoke([...state.messages], {
+    configurable: splitModelAndProvider(configurable.model),
+  });
+
+  return { messages: [result] };
+}
+
+async function handleOptionsTools(
+  state: typeof GraphAnnotation.State,
+  config: LangGraphRunnableConfig
+): Promise<{ messages: BaseMessage[] }> {
+  const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
+  const toolCalls = lastMessage.tool_calls || [];
+
+  if (!toolCalls.length) {
+    return { messages: [] };
+  }
+
+  const tools = [getInlineActionTool(config)];
+
+  const toolMessages = await Promise.all(
+    toolCalls.map(async (toolCall) => {
+      const tool = tools.find((t) => t.name === toolCall.name);
+      if (!tool) {
+        throw new Error(`Tool ${toolCall.name} not found`);
+      }
+      const result = await tool.invoke(toolCall);
+      return result;
+    })
+  );
+
+  return { messages: toolMessages };
+}
+
+const routeTools = (state: typeof GraphAnnotation.State): 'tools' | 'inline_action' => {
   const { messages } = state;
   const lastMessage = messages[messages.length - 1];
 
-  if (lastMessage.getType() === 'ai' && (lastMessage as AIMessage).tool_calls?.length) {
-    return 'web_search';
+  if (lastMessage.getType() === 'ai') {
+    if ((lastMessage as AIMessage).tool_calls?.length) {
+      return 'tools';
+    }
   }
-  return END;
+
+  return 'inline_action';
 };
 
 export const template = new StateGraph(
@@ -78,13 +143,17 @@ export const template = new StateGraph(
   },
   ConfigurationAnnotationTemplate
 )
-  .addNode('call_model', callModel)
-  .addNode('web_search', handleTools)
-  .addEdge(START, 'call_model')
-  .addEdge('web_search', 'call_model')
-  .addConditionalEdges('call_model', shouldContinue, {
-    web_search: 'web_search',
-    [END]: END,
+  .addNode('generate_answer', callModel)
+  .addNode('tools', handleTools)
+  .addNode('tools2', handleOptionsTools)
+  .addNode('inline_action', handleInlineAction)
+  .addEdge(START, 'generate_answer')
+  .addEdge('tools', 'generate_answer')
+  .addEdge('inline_action', 'tools2')
+  .addEdge('tools2', END)
+  .addConditionalEdges('generate_answer', routeTools, {
+    tools: 'tools',
+    inline_action: 'inline_action',
   });
 
 export const graphTemplate = template.compile();
